@@ -1,0 +1,10 @@
+out/
+results/
+.vscode/
+.settings/
+.R-lab/
+core*
+
+*_m.*
+
+*_dbg
