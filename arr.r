@@ -68,4 +68,4 @@ plot_qs = ggplot(
 geom_step()
 
 dir.create("plots", showWarnings = FALSE)
-ggsave("plots", plot = plot, width = 10, height = 6, dpi = 300)
+ggsave("plots/queueSize.png", plot = plot_qs, width = 10, height = 6, dpi = 300)
