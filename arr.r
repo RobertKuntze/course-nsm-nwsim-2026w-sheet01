@@ -56,7 +56,7 @@ total <- avg_qs %>%
 
 avg_qs_with_total <- bind_rows(avg_qs, total)
 
-ggplot(
+plot_qs = ggplot(
         avg_qs_with_total,
         aes(
             x = time,
@@ -66,3 +66,6 @@ ggplot(
         )
 ) +
 geom_step()
+
+dir.create("plots", showWarnings = FALSE)
+ggsave("plots", plot = plot, width = 10, height = 6, dpi = 300)

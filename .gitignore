@@ -1,5 +1,7 @@
 out/
 results/
+results.csv
+plots/
 .vscode/
 .settings/
 .R-lab/
