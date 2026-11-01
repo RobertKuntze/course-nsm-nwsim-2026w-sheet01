@@ -17,8 +17,8 @@ private:
     cOutVector customerWaitTimeVector; // records time spent in queue (does not include waiting for items to be processed)
     cOutVector queueSizeVector; // records the queue size whenever a customer joins/leaves the queue
     simtime_t serviceTime = 0.0;
-    cOutVector serviceTimeVector;
-    cOutVector idleTimeVector;
+    cOutVector serviceTimeVector; // records time spent working
+    cOutVector idleTimeVector; // records time not spent working (simTime - serviceTime)
 protected:
 virtual void initialize();
     virtual void handleMessage(cMessage* msg);
@@ -32,8 +32,7 @@ void Register::initialize()
 {
     timePerItem = par("timePerItem");
     useRegisterTimePerItem = true;
-    WATCH(queue);
-    
+
     customerWaitTimeVector.setName("customerWait");
     queueSizeVector.setName("queueSizeVector");
     serviceTimeVector.setName("serviceTimeVector");
@@ -57,10 +56,10 @@ void Register::handleMessage(cMessage* msg)
 {
     if (msg == working) {
         Customer* front = queue.front();
-        
+
         delete front;
         queue.pop();
-        
+
         if (!queue.empty()) {
             front = queue.front();
             simtime_t wait = simTime() - front->getWaitStart();
