@@ -5,6 +5,8 @@
 #include "customer_m.h"
 #include "queue_m.h"
 #include <map>
+#include <numbers>
+#include <cmath>
 
 using namespace omnetpp;
 
@@ -13,6 +15,7 @@ class Balancer : public cSimpleModule
 {
 private:
     simtime_t timeBetweenCustomers;
+    simtime_t sinAmplitude;
     int availableRegisters = 0;
     std::map<int, int> registerQueueSizes{{0,0}};
 protected:
@@ -20,6 +23,7 @@ protected:
     virtual void handleMessage(cMessage* msg);
     virtual int chooseTarget(Customer* customer);
     virtual Customer* createCustomer();
+    virtual double getIntervalAt(simtime_t simtime);
     virtual void finish();
 };
 
@@ -34,9 +38,19 @@ Customer* Balancer::createCustomer()
     return customer;
 }
 
+double Balancer::getIntervalAt(simtime_t simtime)
+{
+    double pi = 3.14159; // good enough probably
+
+    double result = timeBetweenCustomers.dbl() + sinAmplitude.dbl() * std::cos(2*pi * simtime.dbl() / 3600.0);
+
+    return result;
+}
+
 void Balancer::initialize()
 {
     timeBetweenCustomers = par("timeBetweenCustomers");
+    sinAmplitude = par("sinAmplitude");
     availableRegisters = gateSize("out");
 
     scheduleAt(0.0, createCustomer());
@@ -49,7 +63,7 @@ void Balancer::handleMessage(cMessage* msg)
 
         int target = chooseTarget(customer);
         send(customer, "out", target);
-        scheduleAt(simTime() + timeBetweenCustomers , createCustomer());
+        scheduleAt(simTime() + exponential(getIntervalAt(simTime())) , createCustomer());
     } else if (std::string(msg->getName()) == "queue") {
         QueueMsg* queue = check_and_cast<QueueMsg*>(msg);
 
