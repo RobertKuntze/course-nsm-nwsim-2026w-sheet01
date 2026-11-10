@@ -2,6 +2,7 @@ simple Balancer
 {
     parameters:
         double timeBetweenCustomers @unit(s);
+        double sinAmplitude @unit(s);
     gates:
         output out[];
 }
