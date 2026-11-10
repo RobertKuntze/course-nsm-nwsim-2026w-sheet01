@@ -16,7 +16,6 @@ protected:
     virtual void handleMessage(cMessage* msg);
     virtual int chooseTarget(Customer* customer);
     virtual Customer* createCustomer();
-    virtual int getTimeOffset();
     virtual void finish();
 };
 
@@ -45,13 +44,7 @@ void Balancer::handleMessage(cMessage* msg)
 
     int target = chooseTarget(customer);
     send(customer, "out", target);
-    scheduleAt(simTime() + timeBetweenCustomers , createCustomer());
-}
-
-int Balancer::getTimeOffset()
-{
-    // TODO create variance in customers
-    return 0;
+    scheduleAt(simTime() + exponential(timeBetweenCustomers) , createCustomer());
 }
 
 int Balancer::chooseTarget(Customer* customer)
