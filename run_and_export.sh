@@ -5,5 +5,5 @@ make MODE=debug
 
 out/clang-debug/Store_dbg -u Cmdenv
 
-rm ./results.csv
+rm -f -- ./results.csv
 opp_scavetool export -F CSV-S -o results.csv results/*.vec
