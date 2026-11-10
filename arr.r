@@ -23,11 +23,7 @@ long$time = long$time
 
 queue_size = long[long$vector == "queueSizeVector", ]
 
-<<<<<<< HEAD
-time_grid = seq(0,7200,by = 1)
-=======
 time_grid = seq(0,7200,by = 30)
->>>>>>> c8cf910 (Added a cos offset to the timeBetweenCustomers, to simulate customer)
 
 avg_qs = queue_size %>%
     group_by(id) %>%
