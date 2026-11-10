@@ -1,7 +1,10 @@
+#include <map>
 #include <string.h>
 #include <stdio.h>
 #include <omnetpp.h>
 #include "customer_m.h"
+#include "queue_m.h"
+#include <map>
 
 using namespace omnetpp;
 
@@ -11,12 +14,12 @@ class Balancer : public cSimpleModule
 private:
     simtime_t timeBetweenCustomers;
     int availableRegisters = 0;
+    std::map<int, int> registerQueueSizes{{0,0}};
 protected:
     virtual void initialize();
     virtual void handleMessage(cMessage* msg);
     virtual int chooseTarget(Customer* customer);
     virtual Customer* createCustomer();
-    virtual int getTimeOffset();
     virtual void finish();
 };
 
@@ -41,23 +44,29 @@ void Balancer::initialize()
 
 void Balancer::handleMessage(cMessage* msg)
 {
-    Customer* customer = check_and_cast<Customer*>(msg);
+    if (std::string(msg->getName()) == "customer") {
+        Customer* customer = check_and_cast<Customer*>(msg);
 
-    int target = chooseTarget(customer);
-    send(customer, "out", target);
-    scheduleAt(simTime() + timeBetweenCustomers , createCustomer());
-}
+        int target = chooseTarget(customer);
+        send(customer, "out", target);
+        scheduleAt(simTime() + timeBetweenCustomers , createCustomer());
+    } else if (std::string(msg->getName()) == "queue") {
+        QueueMsg* queue = check_and_cast<QueueMsg*>(msg);
 
-int Balancer::getTimeOffset()
-{
-    // TODO create variance in customers
-    return 0;
+        registerQueueSizes[queue->getArrivalGate()->getIndex()] = queue->getTotalItems();
+        delete queue;
+    }
 }
 
 int Balancer::chooseTarget(Customer* customer)
 {
+    int target = 0;
+    int lowest = registerQueueSizes[target];
+    for (int i = 1; i < registerQueueSizes.size(); i++) {
+        if (registerQueueSizes[i] < lowest) { target = i; }
+    }
     // TODO: this is just random for now
-    return intuniform(0,availableRegisters-1);
+    return target;
 }
 
 void Balancer::finish()

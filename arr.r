@@ -23,7 +23,7 @@ long$time = long$time
 
 queue_size = long[long$vector == "queueSizeVector", ]
 
-time_grid = seq(0,3600,by = 1)
+time_grid = seq(0,7200,by = 1)
 
 avg_qs = queue_size %>%
     group_by(id) %>%
@@ -65,7 +65,7 @@ plot_qs = ggplot(
             color = factor(id)
         )
 ) +
-geom_step()
+geom_line()
 
 dir.create("plots", showWarnings = FALSE)
 ggsave("plots/queueSize.png", plot = plot_qs, width = 10, height = 6, dpi = 300)

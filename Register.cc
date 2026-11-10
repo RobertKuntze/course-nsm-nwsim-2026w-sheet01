@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <omnetpp.h>
 #include "customer_m.h"
+#include "queue_m.h"
 #include <queue>
 
 using namespace omnetpp;
@@ -13,6 +14,7 @@ private:
     simtime_t timePerItem;
     bool useRegisterTimePerItem;
     std::queue<Customer*> queue;
+    int currentQueueItems = 0;
     cMessage* working = new cMessage("working"); // used to abstract when the register is in use
     cOutVector customerWaitTimeVector; // records time spent in queue (does not include waiting for items to be processed)
     cOutVector queueSizeVector; // records the queue size whenever a customer joins/leaves the queue
@@ -23,6 +25,7 @@ protected:
 virtual void initialize();
     virtual void handleMessage(cMessage* msg);
     virtual simtime_t calculateProcessTime(Customer* customer);
+    virtual void sendQueueMsg();
     virtual void finish();
 };
 
@@ -37,6 +40,8 @@ void Register::initialize()
     queueSizeVector.setName("queueSizeVector");
     serviceTimeVector.setName("serviceTimeVector");
     idleTimeVector.setName("idleTimeVector");
+
+    sendQueueMsg();
 }
 
 simtime_t Register::calculateProcessTime (Customer* customer)
@@ -47,16 +52,24 @@ simtime_t Register::calculateProcessTime (Customer* customer)
     simtime_t totalTime = customer->getRemainingItems() * timePerItem;
     serviceTime += totalTime;
     serviceTimeVector.record(serviceTime);
-    idleTimeVector.record(simTime() - serviceTime);
 
     return totalTime;
+}
+
+void Register::sendQueueMsg()
+{
+    QueueMsg* msg = new QueueMsg("queue");
+    msg->setTotalItems(currentQueueItems);
+    send(msg, "out");
 }
 
 void Register::handleMessage(cMessage* msg)
 {
     if (msg == working) {
-        Customer* front = queue.front();
+        idleTimeVector.record(simTime() - serviceTime);
 
+        Customer* front = queue.front();
+        currentQueueItems -= front->getRemainingItems();
         delete front;
         queue.pop();
 
@@ -67,6 +80,9 @@ void Register::handleMessage(cMessage* msg)
             scheduleAt(simTime() + calculateProcessTime(front), working);
             // bubble("Finished, starting again");
         }
+
+        sendQueueMsg();
+
         return;
     }
     // record the queue size, before the customer is added - represents
@@ -76,11 +92,14 @@ void Register::handleMessage(cMessage* msg)
     queue.push(customer);
     // bubble("Got a new Customer");
     customer->setWaitStart(simTime());
+    currentQueueItems += customer->getRemainingItems();
+    sendQueueMsg();
 
 
     if (!working->isScheduled()) {
         // self message to handle customer
         scheduleAt(simTime() + calculateProcessTime(customer), working);
+        customerWaitTimeVector.record(0.0);
         // bubble("Starting after break");
     }
 }

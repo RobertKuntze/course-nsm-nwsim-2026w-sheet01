@@ -31,11 +31,12 @@ PROJECTRELATIVE_PATH =
 O = $(PROJECT_OUTPUT_DIR)/$(CONFIGNAME)/$(PROJECTRELATIVE_PATH)
 
 # Object files for local .cc, .msg and .sm files
-OBJS = $O/Balancer.o $O/Register.o $O/customer_m.o
+OBJS = $O/Balancer.o $O/Register.o $O/customer_m.o $O/queue_m.o
 
 # Message files
 MSGFILES = \
-    customer.msg
+    customer.msg \
+    queue.msg
 
 # SM files
 SMFILES =
