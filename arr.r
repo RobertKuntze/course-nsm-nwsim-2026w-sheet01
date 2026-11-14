@@ -1,71 +1,57 @@
 library(tidyverse)
-library(ggplot2)
-library(dplyr)
 
-wide = read.csv("results.csv", check.names = FALSE)
+wide <- read.csv("results.csv", check.names = FALSE)
 
-pairs <- seq(1, ncol(wide), by = 2)
 
-long <- do.call(rbind, lapply(pairs, function(i) {
-  data.frame(
-    vector = names(wide)[i],
-    time   = wide[[i]],
-    value  = wide[[i + 1]]
+long <- map_dfr(seq(1, ncol(wide), by = 2), \(i) tibble(
+    name  = names(wide)[i],
+    time  = wide[[i]],
+    value = wide[[i + 1]]
+  )) %>%
+  drop_na() %>%
+  mutate(
+    vector = str_extract(name, "^\\S+"),
+    id     = as.integer(str_match(name, "\\[(\\d+)\\]")[, 2]),
+    run    = as.integer(str_match(name, "\\(#(\\d+)")[, 2]),
+    bin    = floor(time / 90) * 90
   )
-}))
 
-long = na.omit(long)
+# average once for every vector: within runs first, then across runs
+avg <- long %>%
+  summarise(value = mean(value), .by = c(vector, id, run, bin)) %>%
+  summarise(value = mean(value), .by = c(vector, id, bin))
 
-long$id = as.integer(sub(".*\\[([0-9]+)\\].*", "\\1", long$vector))
-long$run = as.integer(sub(".*\\(#([0-9]+).*", "\\1", long$vector))
-long$vector = sub("\\s.*", "", long$vector)
-long$time = long$time
+# total over modules, per vector
+total <- avg %>%
+  summarise(value = sum(value), .by = c(vector, bin)) %>%
+  mutate(id = -1L)
 
-queue_size = long[long$vector == "queueSizeVector", ]
+avg_all <- bind_rows(avg, total) %>%
+  mutate(series = if_else(id == -1, "Total", paste0("tic[", id, "]")))
 
-time_grid = seq(0,7200,by = 30)
+customer_wait <- long %>%
+  filter(str_starts(vector, "customerWait"))
 
-avg_qs = queue_size %>%
-    group_by(id) %>%
-    group_modify(~ {
-        .x %>%
-            group_by(run) %>%
-            group_modify(~ {
-                series = .x %>%
-                    group_by(time) %>%
-                    summarise(value = mean(value), .groups = "drop") %>%
-                    arrange(time)
-
-                tibble(
-                    time = time_grid,
-                    value = approx(series$time, series$value, xout = time_grid, rule = 1)$y
-                )
-            }) %>%
-            ungroup() %>%
-            group_by(time) %>%
-            summarise(value = mean(value, na.rm = TRUE), .groups = "drop")
-    }) %>%
-    ungroup()
-
-avg_qs = na.omit(avg_qs)
-
-total <- avg_qs %>%
-  group_by(time) %>%
-  summarise(value = sum(value, na.rm = TRUE), .groups = "drop") %>%
-  mutate(id = -1)
-
-avg_qs_with_total <- bind_rows(avg_qs, total)
-
-plot_qs = ggplot(
-        avg_qs_with_total,
-        aes(
-            x = time,
-            y = value,
-            group = factor(id),
-            color = factor(id)
-        )
-) +
-geom_line()
+# filter afterwards, one plot per vector
+plot_vector <- function(vec, unit = "(s)", file = paste0("plots/", vec, ".png")) {
+  p <- avg_all %>%
+    filter(vector == vec) %>%
+    ggplot(aes(bin, value, color = series)) +
+    geom_line() +
+    labs(title = vec, x = "Time (s)", y = paste(vec, unit), color = NULL)
+  ggsave(file, p, width = 10, height = 6, dpi = 300)
+  p
+}
 
 dir.create("plots", showWarnings = FALSE)
-ggsave("plots/queueSize.png", plot = plot_qs, width = 10, height = 6, dpi = 300)
+plot_vector("queueSizeVector", unit = "")
+plot_vector("idleTimeVector")
+plot_vector("serviceTimeVector")
+
+cw_ecdf <- ggplot(customer_wait, aes(value, color = factor(id))) +
+  stat_ecdf() +
+  stat_ecdf(aes(color = NULL), color = "black", linewidth = 1) +
+  labs(x = "Customer wait time (s)", y = "P(wait ≤ x)", color = "id")
+ggsave("plots/customerWait_ecdf.png", cw_ecdf)
+# or all of them at once:
+# walk(unique(avg_all$vector), plot_vector)
