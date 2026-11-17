@@ -47,11 +47,12 @@ dir.create("plots", showWarnings = FALSE)
 plot_vector("queueSizeVector", unit = "")
 plot_vector("idleTimeVector")
 plot_vector("serviceTimeVector")
+plot_vector("customerWait")
 
 cw_ecdf <- ggplot(customer_wait, aes(value, color = factor(id))) +
   stat_ecdf() +
   stat_ecdf(aes(color = NULL), color = "black", linewidth = 1) +
   labs(x = "Customer wait time (s)", y = "P(wait ≤ x)", color = "id")
-ggsave("plots/customerWait_ecdf.png", cw_ecdf)
+ggsave("plots/customerWait_ecdf.png", cw_ecdf, width = 10, height = 6, dpi = 300)
 # or all of them at once:
 # walk(unique(avg_all$vector), plot_vector)
